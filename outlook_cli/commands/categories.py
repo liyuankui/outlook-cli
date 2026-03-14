@@ -7,6 +7,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     console,
     get_token,
     print_categories,
@@ -24,7 +25,7 @@ def categories(as_json: bool):
     resp = client.get_master_categories()
     cat_list = resp.get("Body", {}).get("CategoryDetailsList", [])
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(cat_list))
     else:
         if not cat_list:

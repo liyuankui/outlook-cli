@@ -10,6 +10,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     print_attachments,
     print_success,
     to_json_envelope,
@@ -31,7 +32,7 @@ def attachments(message_id: str, download: bool, save_to: str, as_json: bool):
         print_success("No attachments.")
         return
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(atts))
         return
 

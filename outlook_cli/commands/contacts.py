@@ -7,6 +7,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     print_contacts,
     print_success,
     save_json,
@@ -24,7 +25,7 @@ def contacts(max_count: int, as_json: bool, output: str | None):
     client = _get_client()
     contact_list = client.get_contacts(top=max_count)
 
-    if as_json:
+    if _wants_json(as_json):
         if output:
             save_json(contact_list, output)
             print_success(f"Saved to {output}")

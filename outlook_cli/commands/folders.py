@@ -7,6 +7,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     cfg,
     console,
     print_folders,
@@ -26,7 +27,7 @@ def folders(as_json: bool, output: str | None):
     client = _get_client()
     folder_list = client.get_folders()
 
-    if as_json:
+    if _wants_json(as_json):
         if output:
             save_json(folder_list, output)
             print_success(f"Saved to {output}")
@@ -78,7 +79,7 @@ def folder(
         filter_no_category=no_category,
     )
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(messages))
     else:
         if not messages:

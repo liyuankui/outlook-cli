@@ -7,6 +7,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     do_login,
     print_error,
     print_success,
@@ -40,7 +41,7 @@ def whoami(as_json: bool):
     """Show current user info."""
     client = _get_client()
     data = client.get_me()
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(data))
     else:
         print_whoami(data)

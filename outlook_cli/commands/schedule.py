@@ -10,6 +10,7 @@ from rich.table import Table
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     cfg,
     console,
     print_error,
@@ -138,7 +139,7 @@ def schedule(to: str, subject: str, body: str, at: str, cc: tuple, is_html: bool
         html=is_html, send_at=send_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope({"status": "scheduled", "to": to_list, "subject": subject, "scheduled_at": send_at.isoformat()}))
     else:
         local_send = send_at.astimezone(datetime.now().astimezone().tzinfo)
@@ -153,7 +154,7 @@ def schedule_list(as_json: bool):
     client = _get_client()
     entries = client.get_scheduled_list()
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(entries))
     else:
         if not entries:

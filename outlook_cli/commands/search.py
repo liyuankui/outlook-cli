@@ -7,6 +7,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     print_error,
     print_inbox,
     save_json,
@@ -26,7 +27,7 @@ def search(query: str, max_count: int, as_json: bool, output: str | None):
     client = _get_client()
     messages = client.search_messages(query, top=max_count)
 
-    if as_json:
+    if _wants_json(as_json):
         if output:
             save_json(messages, output)
             print_success(f"Saved to {output}")

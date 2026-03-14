@@ -7,6 +7,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     cfg,
     console,
     print_email,
@@ -62,7 +63,7 @@ def inbox(
         filter_no_category=no_category,
     )
 
-    if as_json:
+    if _wants_json(as_json):
         if output:
             save_json(messages, output)
             print_success(f"Saved to {output}")
@@ -95,7 +96,7 @@ def read(message_id: str, raw: bool, as_json: bool):
     client = _get_client()
     email = client.get_message(message_id)
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(email))
     elif raw:
         print_email_raw(email)
@@ -143,7 +144,7 @@ def send(to: str, subject: str, body: str, cc: tuple, is_html: bool, sig_name: s
     client = _get_client()
     client.send_mail(to=to_list, subject=subject, body=body, cc=cc_list, html=is_html)
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope({"status": "sent", "to": to_list, "subject": subject}))
     else:
         print_success(f"Mail sent to {to}")
@@ -172,7 +173,7 @@ def draft(to: str, subject: str, body: str, cc: tuple, is_html: bool, sig_name: 
     cc_list = list(cc) if cc else None
     email = client.create_draft(to=to_list, subject=subject, body=body, cc=cc_list, html=is_html)
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(email))
     else:
         print_success(f"Draft created: {subject} (to: {to})")
@@ -235,7 +236,7 @@ def reply_draft(message_id: str, body: str, reply_all: bool, is_html: bool, sig_
     client = _get_client()
     email = client.create_reply_draft(message_id, comment=body, reply_all=reply_all, html=is_html)
     action = "Reply-all" if reply_all else "Reply"
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(email))
     else:
         print_success(f"{action} draft created for message #{message_id}")

@@ -47,10 +47,21 @@ def _get_client() -> OutlookClient:
     return _client_cache["c"]
 
 
+def _is_piped() -> bool:
+    """True when stdout is not a terminal (piped to another command or file)."""
+    return not sys.stdout.isatty()
+
+
+def _wants_json(as_json: bool) -> bool:
+    """True if JSON output is needed: explicit --json flag OR piped stdout."""
+    return as_json or _is_piped()
+
+
 def _is_json_mode() -> bool:
-    """Check if current command was invoked with --json flag."""
+    """Check JSON mode from Click context (used by error handler)."""
     ctx = click.get_current_context(silent=True)
-    return bool(ctx and ctx.params.get("as_json"))
+    explicit = bool(ctx and ctx.params.get("as_json"))
+    return explicit or _is_piped()
 
 
 def _handle_api_error(fn):

@@ -9,6 +9,7 @@ import click
 from ._common import (
     _get_client,
     _handle_api_error,
+    _wants_json,
     cfg,
     console,
     print_calendars,
@@ -122,7 +123,7 @@ def calendar(days: int, cal_name: str | None, as_json: bool, output: str | None)
         calendar_name=cal_name,
     )
 
-    if as_json:
+    if _wants_json(as_json):
         if output:
             save_json(events, output)
             print_success(f"Saved to {output}")
@@ -144,7 +145,7 @@ def event(event_id: str, as_json: bool):
     """View event details by display number."""
     client = _get_client()
     ev = client.get_event(event_id)
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(ev))
     else:
         print_event_detail(ev)
@@ -226,7 +227,7 @@ def event_create(
         recurrence=recurrence,
     )
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(ev))
     else:
         print_success(f"Event created: {ev.subject}")
@@ -279,7 +280,7 @@ def event_update(
     if kwargs:
         kwargs["timezone"] = cfg.get("timezone", "UTC")
         ev = client.update_event(event_id, **kwargs)
-        if as_json:
+        if _wants_json(as_json):
             click.echo(to_json_envelope(ev))
         else:
             print_success(f"Event #{event_id} updated: {ev.subject}")
@@ -337,7 +338,7 @@ def event_instances(event_id: str, days: int, as_json: bool):
         start=now.isoformat(),
         end=end.isoformat(),
     )
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(events))
     else:
         if not events:
@@ -375,7 +376,7 @@ def calendars_cmd(as_json: bool):
     """List available calendars."""
     client = _get_client()
     cals = client.get_calendars()
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(cals))
     else:
         if not cals:
@@ -416,7 +417,7 @@ def free_busy(attendees: str, date: str, start_hour: int, end_hour: int, duratio
         timezone=cfg.get("timezone", "UTC"),
     )
 
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(suggestions))
     else:
         if not suggestions:
@@ -435,7 +436,7 @@ def people_search(query: str, max_count: int, as_json: bool):
     """Search people by name for attendee autocomplete."""
     client = _get_client()
     results = client.search_people(query, top=max_count)
-    if as_json:
+    if _wants_json(as_json):
         click.echo(to_json_envelope(results))
     else:
         if not results:
