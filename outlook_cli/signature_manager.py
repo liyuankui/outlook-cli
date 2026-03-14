@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 
 from .constants import BASE_URL, SIGNATURES_DIR
+from .exceptions import ResourceNotFoundError
 
 
 def list_signatures() -> list[str]:
@@ -24,7 +25,7 @@ def get_signature(name: str) -> str:
     """Load a signature's HTML content by name."""
     path = SIGNATURES_DIR / f"{name}.html"
     if not path.exists():
-        raise ValueError(
+        raise ResourceNotFoundError(
             f"Signature '{name}' not found. Run 'outlook signature list' to see available signatures."
         )
     return path.read_text(encoding="utf-8")
@@ -42,7 +43,7 @@ def delete_signature(name: str) -> None:
     """Delete a saved signature."""
     path = SIGNATURES_DIR / f"{name}.html"
     if not path.exists():
-        raise ValueError(f"Signature '{name}' not found.")
+        raise ResourceNotFoundError(f"Signature '{name}' not found.")
     path.unlink()
 
 
@@ -79,7 +80,7 @@ def pull_signature(token: str) -> tuple[str, str]:
                     return sig, subject
     finally:
         client.close()
-    raise ValueError(
+    raise ResourceNotFoundError(
         "Could not find a signature in your sent emails. "
         "Send an email with your signature from Outlook first."
     )

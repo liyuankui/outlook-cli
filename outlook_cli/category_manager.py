@@ -23,6 +23,7 @@ from urllib.parse import quote
 import httpx
 
 from .constants import BASE_URL, USER_AGENT
+from .exceptions import ResourceNotFoundError, TokenExpiredError
 
 OWA_SERVICE_BASE = "https://outlook.cloud.microsoft/owa/service.svc"
 
@@ -43,7 +44,7 @@ def _owa_request(token: str, action: str, payload: dict) -> dict:
         timeout=15,
     )
     if resp.status_code == 401:
-        raise RuntimeError("Token expired. Run: outlook login")
+        raise TokenExpiredError("Token expired. Run: outlook login")
     resp.raise_for_status()
     return resp.json()
 
@@ -116,7 +117,7 @@ def rename_category(
     master = get_master_categories(token)
     existing = next((c for c in master if c["Name"] == old_name), None)
     if not existing:
-        raise ValueError(f"Category '{old_name}' not found.")
+        raise ResourceNotFoundError(f"Category '{old_name}' not found.")
 
     new_cat = {
         **existing,

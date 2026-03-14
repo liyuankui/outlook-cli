@@ -8,7 +8,8 @@ from pathlib import Path
 import click
 
 from .auth import get_token, login as do_login, verify_token
-from .client import OutlookClient, TokenExpiredError
+from .client import OutlookClient
+from .exceptions import AuthRequiredError, OutlookCliError, ResourceNotFoundError, TokenExpiredError
 from .config import load_config
 from .formatter import (
     console,
@@ -40,7 +41,7 @@ def _get_client() -> OutlookClient:
     if "c" not in _client_cache:
         try:
             token = get_token()
-        except RuntimeError as e:
+        except (AuthRequiredError, RuntimeError) as e:
             print_error(str(e))
             sys.exit(1)
         _client_cache["c"] = OutlookClient(token)
@@ -60,13 +61,15 @@ def _handle_api_error(fn):
             try:
                 token = do_login()
                 print_success("Re-login successful. Retrying...")
-                # Invalidate cached client so next _get_client() uses new token
                 _client_cache.clear()
                 return fn(*args, **kwargs)
             except Exception:
                 print_error("Auto re-login failed. Run: outlook login --force")
                 sys.exit(1)
-        except ValueError as e:
+        except ResourceNotFoundError as e:
+            print_error(str(e))
+            sys.exit(1)
+        except OutlookCliError as e:
             print_error(str(e))
             sys.exit(1)
         except Exception as e:

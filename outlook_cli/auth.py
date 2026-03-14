@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 
 from .constants import BASE_URL, BROWSER_STATE_FILE, CACHE_DIR, OWA_URL, TOKEN_FILE, USER_AGENT
+from .exceptions import AuthRequiredError
 
 
 def get_token() -> str:
@@ -104,7 +105,7 @@ def login(force: bool = False, debug: bool = False) -> str:
         print(f"\n  [debug] Total requests with Bearer: {len(seen_urls)}")
 
     if not captured_token:
-        raise RuntimeError(
+        raise AuthRequiredError(
             "Could not capture bearer token.\n"
             "Make sure you logged in and your inbox fully loaded.\n"
             "Tip: Try 'outlook login --debug' to see request details."

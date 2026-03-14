@@ -9,6 +9,7 @@ import httpx
 from urllib.parse import quote
 
 from .constants import BASE_URL, CACHE_DIR, DEFERRED_SEND_PROPERTY_ID, ID_MAP_FILE, OWA_SERVICE_URL, SCHEDULED_FILE, USER_AGENT
+from .exceptions import RateLimitError, ResourceNotFoundError, TokenExpiredError
 from .models import Attachment, Contact, Email, Event, Folder
 
 
@@ -311,7 +312,7 @@ class OutlookClient:
         for f in folders:
             if f.name.lower() == name_or_id.lower():
                 return f.id
-        raise ValueError(f"Folder '{name_or_id}' not found. Run 'outlook folders' to see available folders.")
+        raise ResourceNotFoundError(f"Folder '{name_or_id}' not found. Run 'outlook folders' to see available folders.")
 
     def delete_message(self, message_id: str) -> None:
         real_id = self._resolve_id(message_id)
@@ -710,7 +711,7 @@ class OutlookClient:
             if name.lower() in c.get("Name", "").lower():
                 return c["Id"]
         available = ", ".join(c.get("Name", "") for c in cals)
-        raise ValueError(f"Calendar '{name}' not found. Available: {available}")
+        raise ResourceNotFoundError(f"Calendar '{name}' not found. Available: {available}")
 
     def _assign_event_display_nums(self, events: list[Event]) -> None:
         """Assign display numbers to events using the shared ID map."""
@@ -804,7 +805,7 @@ class OutlookClient:
         # Maybe it's already a real ID (long base64 string)
         if len(display_id) > 50:
             return display_id
-        raise ValueError(
+        raise ResourceNotFoundError(
             f"Unknown message #{display_id}. Run 'outlook inbox' first to populate the ID map."
         )
 
@@ -919,9 +920,3 @@ class OutlookClient:
         return resp.json()
 
 
-class TokenExpiredError(Exception):
-    pass
-
-
-class RateLimitError(Exception):
-    pass
