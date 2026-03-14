@@ -36,6 +36,9 @@ Thumbs.db
 .env
 .env.*
 
+# Playwright CLI artifacts (may contain session data)
+.playwright-cli/
+
 # Outlook CLI sensitive/cache files (normally in ~/.cache, but just in case)
 token.json
 browser-state.json
