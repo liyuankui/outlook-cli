@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "outlook-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "Outlook 365 CLI — read, send, and manage emails from the terminal"
 readme = "README.md"
 license = {text = "MIT"}
