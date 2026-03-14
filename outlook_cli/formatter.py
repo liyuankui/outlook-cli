@@ -64,6 +64,34 @@ def print_email(email: Email) -> None:
     console.print(body)
 
 
+def print_thread(messages: list[Email]) -> None:
+    """Print a conversation thread — all messages in chronological order."""
+    console.print(f"[bold cyan]Thread ({len(messages)} messages)[/bold cyan]")
+    console.print()
+    for i, email in enumerate(messages):
+        is_last = i == len(messages) - 1
+        sender = str(email.sender)
+        date = email.received.strftime("%Y-%m-%d %H:%M")
+        read_marker = "" if email.is_read else " [bold yellow]*[/bold yellow]"
+
+        header = f"[bold]#{email.display_num}[/bold]  [dim]{date}[/dim]  {sender}{read_marker}"
+        console.print(header)
+
+        body = _html_to_text(email.body) if email.body_type == "HTML" else email.body
+        body = body.strip()
+        if body:
+            # Indent body and truncate long messages
+            lines = body.split("\n")
+            if len(lines) > 20:
+                lines = lines[:20] + [f"  [dim]... ({len(lines) - 20} more lines)[/dim]"]
+            for line in lines:
+                console.print(f"  {line}")
+
+        if not is_last:
+            console.print(f"  [dim]{'─' * 60}[/dim]")
+            console.print()
+
+
 def print_email_raw(email: Email) -> None:
     """Print raw HTML body."""
     console.print(email.body)

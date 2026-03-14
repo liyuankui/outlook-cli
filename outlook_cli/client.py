@@ -183,6 +183,24 @@ class OutlookClient:
         email.display_num = int(message_id) if message_id.isdigit() else 0
         return email
 
+    def get_thread(self, message_id: str, max_messages: int = 50) -> list[Email]:
+        """Fetch all messages in the same conversation as the given message."""
+        email = self.get_message(message_id)
+        conv_id = email.conversation_id
+        if not conv_id:
+            return [email]
+        resp = self._get(
+            "/messages",
+            params={
+                "$filter": f"ConversationId eq '{conv_id}'",
+                "$orderby": "ReceivedDateTime asc",
+                "$top": max_messages,
+            },
+        )
+        messages = [Email.from_api(m) for m in resp.get("value", [])]
+        self._assign_display_nums(messages)
+        return messages
+
     def send_mail(
         self,
         to: list[str],

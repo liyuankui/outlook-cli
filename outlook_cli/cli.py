@@ -33,6 +33,7 @@ cli.add_command(auth_mod.whoami)
 # Mail - Read & Write
 cli.add_command(mail_mod.inbox)
 cli.add_command(mail_mod.read)
+cli.add_command(mail_mod.thread)
 cli.add_command(mail_mod.send)
 cli.add_command(mail_mod.draft)
 cli.add_command(mail_mod.draft_send)

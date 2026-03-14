@@ -1,4 +1,4 @@
-"""Mail commands: inbox, read, send, draft, draft-send, reply, reply-draft, forward."""
+"""Mail commands: inbox, read, thread, send, draft, draft-send, reply, reply-draft, forward."""
 
 from __future__ import annotations
 
@@ -109,6 +109,28 @@ def read(message_id: str, raw: bool, as_json: bool):
             client.mark_read(message_id)
         except Exception:
             pass
+
+
+@click.command()
+@click.argument("message_id")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@_handle_api_error
+def thread(message_id: str, as_json: bool):
+    """Show the full conversation thread for a message."""
+    from ..formatter import print_thread
+
+    client = _get_client()
+    messages = client.get_thread(message_id)
+
+    if _wants_json(as_json):
+        click.echo(to_json_envelope(messages))
+    else:
+        if len(messages) <= 1:
+            print_success("This message is not part of a conversation thread.")
+            if messages:
+                print_email(messages[0])
+        else:
+            print_thread(messages)
 
 
 @click.command()
