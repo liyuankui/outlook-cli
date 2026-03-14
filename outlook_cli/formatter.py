@@ -66,8 +66,6 @@ def print_email(email: Email) -> None:
         header += f"[bold]Flag:[/bold] {flag_info}\n"
     elif email.flag_status == "complete":
         header += f"[bold]Flag:[/bold] Complete\n"
-    if getattr(email, "is_pinned", False):
-        header += f"[bold]Pinned:[/bold] Yes\n"
     header += f"[bold]Subject:[/bold] {email.subject}"
 
     body = _html_to_text(email.body) if email.body_type == "HTML" else email.body

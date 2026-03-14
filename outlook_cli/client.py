@@ -8,7 +8,7 @@ import httpx
 
 from urllib.parse import quote
 
-from .constants import ATTACHMENT_SIZE_THRESHOLD, BASE_URL, CACHE_DIR, DEFERRED_SEND_PROPERTY_ID, ID_MAP_FILE, OWA_SERVICE_URL, PIN_PROPERTY_ID, SCHEDULED_FILE, USER_AGENT
+from .constants import ATTACHMENT_SIZE_THRESHOLD, BASE_URL, CACHE_DIR, DEFERRED_SEND_PROPERTY_ID, ID_MAP_FILE, OWA_SERVICE_URL, SCHEDULED_FILE, USER_AGENT
 from .exceptions import RateLimitError, ResourceNotFoundError, TokenExpiredError
 from .models import Attachment, Contact, Email, Event, Folder
 
@@ -381,39 +381,61 @@ class OutlookClient:
         return self._patch(f"/messages/{real_id}", json={"Flag": flag})
 
     def pin_message(self, message_id: str, pinned: bool = True) -> dict:
-        """Pin or unpin a message using the IsPinned extended property."""
-        real_id = self._resolve_id(message_id)
-        return self._patch(f"/messages/{real_id}", json={
-            "SingleValueExtendedProperties": [{
-                "PropertyId": PIN_PROPERTY_ID,
-                "Value": "true" if pinned else "false",
-            }]
-        })
+        """Pin or unpin a message via OWA UpdateItem with RenewTime.
 
-    def get_pin_status(self, message_id: str) -> bool:
-        """Check if a message is pinned.
-
-        Uses a raw URL because $expand with nested $filter
-        gets double-encoded by httpx params.
+        Pin sets RenewTime to a far-future date (keeps message at top).
+        Unpin deletes the RenewTime field.
         """
         real_id = self._resolve_id(message_id)
-        url = (
-            f"{BASE_URL}/messages/{real_id}"
-            f"?$expand=SingleValueExtendedProperties"
-            f"($filter=PropertyId eq '{PIN_PROPERTY_ID}')"
-        )
-        resp = httpx.get(url, headers={
-            "Authorization": f"Bearer {self._token}",
-            "User-Agent": USER_AGENT,
-        }, timeout=30)
-        if resp.status_code == 401:
-            raise TokenExpiredError("Token expired. Run: outlook login")
-        resp.raise_for_status()
-        data = resp.json()
-        for prop in data.get("SingleValueExtendedProperties", []):
-            if "IsPinned" in prop.get("PropertyId", ""):
-                return prop.get("Value", "").lower() == "true"
-        return False
+
+        if pinned:
+            updates = [{
+                "__type": "SetItemField:#Exchange",
+                "Path": {
+                    "__type": "PropertyUri:#Exchange",
+                    "FieldURI": "RenewTime",
+                },
+                "Item": {
+                    "__type": "Message:#Exchange",
+                    "RenewTime": "4500-09-01T00:00:00.000",
+                },
+            }]
+        else:
+            updates = [{
+                "__type": "DeleteItemField:#Exchange",
+                "Path": {
+                    "__type": "PropertyUri:#Exchange",
+                    "FieldURI": "RenewTime",
+                },
+            }]
+
+        return self._owa_action("UpdateItem", {
+            "__type": "UpdateItemJsonRequest:#Exchange",
+            "Header": {
+                "__type": "JsonRequestHeaders:#Exchange",
+                "RequestServerVersion": "V2018_01_08",
+                "TimeZoneContext": {
+                    "__type": "TimeZoneContext:#Exchange",
+                    "TimeZoneDefinition": {
+                        "__type": "TimeZoneDefinitionType:#Exchange",
+                        "Id": "UTC",
+                    },
+                },
+            },
+            "Body": {
+                "__type": "UpdateItemRequest:#Exchange",
+                "ItemChanges": [{
+                    "__type": "ItemChange:#Exchange",
+                    "Updates": updates,
+                    "ItemId": {
+                        "__type": "ItemId:#Exchange",
+                        "Id": real_id,
+                    },
+                }],
+                "ConflictResolution": "AlwaysOverwrite",
+                "MessageDisposition": "SaveOnly",
+            },
+        })
 
     # ------------------------------------------------------------------
     # Scheduled send

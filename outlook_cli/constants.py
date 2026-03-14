@@ -28,9 +28,6 @@ SIGNATURES_DIR = CONFIG_DIR / "signatures"
 # upload session for larger files.
 ATTACHMENT_SIZE_THRESHOLD = 3 * 1024 * 1024  # 3 MB
 
-# Extended property for pin (named MAPI property)
-PIN_PROPERTY_ID = "Boolean {23239608-685D-4732-9C55-4C95CB4E8E33} Name IsPinned"
-
 # Extended property for deferred/scheduled send
 DEFERRED_SEND_PROPERTY_ID = "SystemTime 0x3FEF"
 

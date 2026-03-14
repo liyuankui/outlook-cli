@@ -38,7 +38,6 @@ class Email:
     categories: list[str] = field(default_factory=list)
     flag_status: str = "notFlagged"  # "notFlagged", "flagged", "complete"
     flag_due: datetime | None = None
-    is_pinned: bool = False
     scheduled_send: datetime | None = None
     # display number assigned by CLI
     display_num: int = 0

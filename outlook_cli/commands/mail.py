@@ -119,12 +119,6 @@ def read(message_id: str, raw: bool, as_json: bool):
     client = _get_client()
     email = client.get_message(message_id)
 
-    # Enrich with pin status
-    try:
-        email.is_pinned = client.get_pin_status(message_id)
-    except Exception:
-        pass
-
     if _wants_json(as_json):
         click.echo(to_json_envelope(email))
     elif raw:
