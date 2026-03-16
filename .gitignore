@@ -44,3 +44,6 @@ token.json
 browser-state.json
 id_map.json
 scheduled.json
+
+# Generated reports
+reports/
