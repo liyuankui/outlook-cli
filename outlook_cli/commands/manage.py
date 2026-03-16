@@ -1,4 +1,4 @@
-"""Management commands: mark-read, move, delete, flag."""
+"""Management commands: mark-read, move, copy, delete, flag."""
 
 from __future__ import annotations
 
@@ -33,6 +33,18 @@ def move(message_ids: tuple, destination: str):
     for mid in message_ids:
         client.move_message(mid, destination)
         print_success(f"Message #{mid} moved to {destination}")
+
+
+@click.command()
+@click.argument("message_ids", nargs=-1, required=True)
+@click.argument("destination")
+@_handle_api_error
+def copy(message_ids: tuple, destination: str):
+    """Copy messages to another folder. Accepts multiple IDs."""
+    client = _get_client()
+    for mid in message_ids:
+        client.copy_message(mid, destination)
+        print_success(f"Message #{mid} copied to {destination}")
 
 
 @click.command()

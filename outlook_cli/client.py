@@ -107,6 +107,8 @@ class OutlookClient:
         filter_no_category: bool = False,
         select: str | None = None,
     ) -> list[Email]:
+        folder_id = self._resolve_folder(folder)
+        folder_path = f"/MailFolders/{folder_id}/messages"
         filter_str, search_str, needs_search = _build_query_params(
             unread_only=unread_only,
             filter_from=filter_from,
@@ -123,7 +125,7 @@ class OutlookClient:
                 params: dict = {"$top": top, "$search": search_str}
                 if select:
                     params["$select"] = select
-                resp = self._get("/messages", params=params)
+                resp = self._get(folder_path, params=params)
             else:
                 params = {
                     "$top": top,
@@ -134,7 +136,7 @@ class OutlookClient:
                     params["$filter"] = filter_str
                 if select:
                     params["$select"] = select
-                resp = self._get(f"/MailFolders/{folder}/messages", params=params)
+                resp = self._get(folder_path, params=params)
             messages = [Email.from_api(m) for m in resp.get("value", [])]
         else:
             # Client-side filtering: over-fetch in pages until we have enough
@@ -147,7 +149,7 @@ class OutlookClient:
                     params = {"$top": batch_size, "$search": search_str}
                     if select:
                         params["$select"] = select
-                    resp = self._get("/messages", params=params)
+                    resp = self._get(folder_path, params=params)
                 else:
                     params = {
                         "$top": batch_size,
@@ -158,7 +160,7 @@ class OutlookClient:
                         params["$filter"] = filter_str
                     if select:
                         params["$select"] = select
-                    resp = self._get(f"/MailFolders/{folder}/messages", params=params)
+                    resp = self._get(folder_path, params=params)
                 batch = resp.get("value", [])
                 if not batch:
                     break
@@ -332,6 +334,15 @@ class OutlookClient:
         folder_id = self._resolve_folder(destination_folder)
         resp = self._post(
             f"/messages/{real_id}/move",
+            json={"DestinationId": folder_id},
+        )
+        return Email.from_api(resp)
+
+    def copy_message(self, message_id: str, destination_folder: str) -> Email:
+        real_id = self._resolve_id(message_id)
+        folder_id = self._resolve_folder(destination_folder)
+        resp = self._post(
+            f"/messages/{real_id}/copy",
             json={"DestinationId": folder_id},
         )
         return Email.from_api(resp)
@@ -1113,5 +1124,3 @@ class OutlookClient:
             raise TokenExpiredError("Token expired. Run: outlook login")
         resp.raise_for_status()
         return resp.json()
-
-

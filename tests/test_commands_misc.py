@@ -193,6 +193,9 @@ def test_manage_commands_delegate_to_client(runner, tty_mode, monkeypatch):
         def move_message(self, message_id, destination):
             self.moved = getattr(self, "moved", []) + [(message_id, destination)]
 
+        def copy_message(self, message_id, destination):
+            self.copied = getattr(self, "copied", []) + [(message_id, destination)]
+
         def delete_message(self, message_id):
             self.deleted = getattr(self, "deleted", []) + [message_id]
 
@@ -207,17 +210,20 @@ def test_manage_commands_delegate_to_client(runner, tty_mode, monkeypatch):
 
     mark = runner.invoke(manage.mark_read, ["1", "2", "--unread"])
     move_result = runner.invoke(manage.move, ["1", "2", "Archive"])
+    copy_result = runner.invoke(manage.copy, ["1", "2", "Finance"])
     delete_result = runner.invoke(manage.delete, ["1", "2"], input="y\n")
     flag_result = runner.invoke(manage.flag, ["1", "2", "--due", "2026-03-20"])
     pin_result = runner.invoke(manage.pin, ["1", "2", "--unpin"])
 
     assert mark.exit_code == 0
     assert move_result.exit_code == 0
+    assert copy_result.exit_code == 0
     assert delete_result.exit_code == 0
     assert flag_result.exit_code == 0
     assert pin_result.exit_code == 0
     assert fake_client.marked == [("1", False), ("2", False)]
     assert fake_client.moved == [("1", "Archive"), ("2", "Archive")]
+    assert fake_client.copied == [("1", "Finance"), ("2", "Finance")]
     assert fake_client.deleted == ["1", "2"]
     assert fake_client.flagged == [("1", "flagged", "2026-03-20"), ("2", "flagged", "2026-03-20")]
     assert fake_client.pinned == [("1", False), ("2", False)]

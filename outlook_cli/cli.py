@@ -72,6 +72,7 @@ cli.add_command(signatures_mod.signature_delete)
 # Management
 cli.add_command(manage_mod.mark_read)
 cli.add_command(manage_mod.move)
+cli.add_command(manage_mod.copy)
 cli.add_command(manage_mod.delete)
 cli.add_command(manage_mod.flag)
 cli.add_command(manage_mod.pin)

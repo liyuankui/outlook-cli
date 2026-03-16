@@ -130,6 +130,48 @@ def test_get_messages_with_no_category_overfetches_until_top(client, monkeypatch
     assert all(not m.categories for m in messages)
 
 
+def test_get_messages_resolves_named_folder_for_standard_listing(client, monkeypatch):
+    monkeypatch.setattr(client, "_resolve_folder", lambda folder: "folder-id")
+    monkeypatch.setattr(client, "_assign_display_nums", lambda msgs: None)
+    calls = []
+
+    def fake_get(path, params=None):
+        calls.append((path, params))
+        return {"value": []}
+
+    monkeypatch.setattr(client, "_get", fake_get)
+
+    client.get_messages(folder="Onaylar", top=5)
+
+    assert calls == [
+        (
+            "/MailFolders/folder-id/messages",
+            {"$top": 5, "$skip": 0, "$orderby": "ReceivedDateTime desc"},
+        )
+    ]
+
+
+def test_get_messages_uses_folder_scoped_search_for_text_filters(client, monkeypatch):
+    monkeypatch.setattr(client, "_resolve_folder", lambda folder: "folder-id")
+    monkeypatch.setattr(client, "_assign_display_nums", lambda msgs: None)
+    calls = []
+
+    def fake_get(path, params=None):
+        calls.append((path, params))
+        return {"value": []}
+
+    monkeypatch.setattr(client, "_get", fake_get)
+
+    client.get_messages(folder="Onaylar", top=5, filter_subject="Tüsaf")
+
+    assert calls == [
+        (
+            "/MailFolders/folder-id/messages",
+            {"$top": 5, "$search": '"subject:Tüsaf"'},
+        )
+    ]
+
+
 def test_schedule_send_tracks_entry(client, monkeypatch):
     send_mail = MagicMock()
     track = MagicMock(return_value={"subject": "Planned"})
@@ -202,6 +244,18 @@ def test_cancel_scheduled_entry_removes_local_and_server_copy(client, monkeypatc
     assert removed["server_deleted"] is True
     assert saved["entries"] == []
     delete.assert_called_once_with("/messages/draft-1")
+
+
+def test_copy_message_posts_to_copy_action_with_resolved_folder(client, monkeypatch):
+    client._id_map["3"] = "real-msg-id"
+    monkeypatch.setattr(client, "_resolve_folder", lambda folder: f"resolved:{folder}")
+    post = MagicMock(return_value={"Id": "copied-msg-id", "Subject": "Copied"})
+    monkeypatch.setattr(client, "_post", post)
+
+    email = client.copy_message("3", "Archive")
+
+    assert email.id == "copied-msg-id"
+    post.assert_called_once_with("/messages/real-msg-id/copy", json={"DestinationId": "resolved:Archive"})
 
 
 def test_create_event_builds_expected_payload(client, monkeypatch):

@@ -119,6 +119,8 @@ outlook folder Archive -n 20           # messages in a folder
 outlook folder Archive --category "Urgent"  # filter by category
 outlook move 3 Archive                 # move message to folder
 outlook move 3 4 5 Archive             # move multiple messages
+outlook copy 3 Finance                 # copy message to folder
+outlook copy 3 4 5 Finance             # copy multiple messages
 ```
 
 ### Categories
