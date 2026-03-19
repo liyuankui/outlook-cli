@@ -2,7 +2,7 @@
 name: outlook-cli
 description: CLI skill for Outlook 365 to read, send, search, and manage emails, calendar events, categories, and contacts from the terminal without API keys or admin consent
 author: yusufaltunbicak
-version: "0.1.3"
+version: "0.1.4"
 tags:
   - outlook
   - email
@@ -39,9 +39,11 @@ playwright install chromium
 - `OUTLOOK_TOKEN` is still supported, but if a profile is bound it must match that profile's mailbox.
 
 ```bash
-outlook login              # Interactive browser login
-outlook login --force      # Force re-login, ignore saved session
-outlook whoami             # Verify current user
+outlook login                              # Interactive browser login
+outlook login --force                      # Force re-login, ignore saved session
+echo $TOKEN | outlook login --with-token   # Skip browser, read token from stdin
+outlook login --with-token < token.txt     # Read token from file
+outlook whoami                             # Verify current user
 outlook account add work   # Create and bind a named profile
 outlook account list
 outlook account current
@@ -259,6 +261,10 @@ outlook attachments 3 --json
 ```bash
 outlook calendar                                    # Next 7 days
 outlook calendar --days 14                          # Next 14 days
+outlook calendar --days -7                          # Past 7 days
+outlook calendar --days -30                         # Past 30 days
+outlook calendar --timezone Asia/Shanghai           # Convert times to timezone
+outlook calendar --timezone UTC+8                   # Fixed offset also works
 outlook calendar --calendar "John Smith"             # View a shared/other calendar
 outlook calendar --calendar "John" --days 5         # Partial name match works
 outlook calendar --json -o events.json
