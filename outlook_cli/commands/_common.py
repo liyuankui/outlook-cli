@@ -113,6 +113,7 @@ def do_login(
     debug: bool = False,
     account_name: str | None = None,
     allow_create: bool = False,
+    token: str | None = None,
 ) -> str:
     selected = get_account_name(account_name, allow_missing=allow_create)
     return auth_login(
@@ -120,6 +121,7 @@ def do_login(
         debug=debug,
         account_name=selected,
         allow_create=allow_create,
+        token=token,
     )
 
 

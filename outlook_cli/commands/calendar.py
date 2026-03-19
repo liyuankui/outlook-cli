@@ -25,6 +25,56 @@ from ._common import (
 )
 
 
+def _parse_timezone(tz_str: str | None):
+    """Parse timezone string to timezone object.
+
+    Supports:
+      None          -> None (no conversion)
+      UTC           -> UTC
+      UTC+8, UTC-5  -> fixed offset
+      Asia/Shanghai -> IANA timezone name
+    """
+    if tz_str is None:
+        return None
+
+    tz_str = tz_str.strip()
+
+    if tz_str.upper() == "UTC":
+        return timezone.utc
+
+    import re
+    offset_match = re.match(r'^UTC([+-])(\d{1,2})(?::(\d{2}))?$', tz_str, re.IGNORECASE)
+    if offset_match:
+        sign = 1 if offset_match.group(1) == '+' else -1
+        hours = int(offset_match.group(2))
+        minutes = int(offset_match.group(3) or 0)
+        return timezone(sign * timedelta(hours=hours, minutes=minutes))
+
+    try:
+        import zoneinfo
+        return zoneinfo.ZoneInfo(tz_str)
+    except (ImportError, AttributeError):
+        try:
+            from dateutil import tz
+            return tz.gettz(tz_str)
+        except ImportError:
+            raise click.BadParameter(
+                f"Unknown timezone: {tz_str}. Install python-dateutil for IANA timezone support."
+            )
+    except Exception:
+        raise click.BadParameter(f"Unknown timezone: {tz_str}")
+
+
+def _resolve_output_tz(tz_str: str | None):
+    """Resolve output timezone from --timezone flag or config.yaml."""
+    if tz_str is not None:
+        return _parse_timezone(tz_str)
+    config_tz = cfg.get("timezone", "UTC")
+    if config_tz and config_tz.upper() != "UTC":
+        return _parse_timezone(config_tz)
+    return None
+
+
 def _parse_event_time(s: str) -> str:
     """Parse event time to ISO format for the API.
 
@@ -108,48 +158,81 @@ def _build_recurrence(
 
 
 @click.command()
-@click.option("--days", default=7, type=int, help="Number of days to show")
+@click.option("--days", default=7, type=int, help="Number of days to show (negative for past)")
 @click.option("--calendar", "cal_name", default=None, help="Calendar name (default: your primary calendar)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@click.option("--timezone", "tz_str", default=None, help="Timezone for output (default: system local). Examples: UTC, UTC+8, Asia/Shanghai")
 @click.option("--output", "-o", type=click.Path(), help="Save output to file")
 @account_option
 @_handle_api_error
-def calendar(days: int, cal_name: str | None, as_json: bool, output: str | None, account_name: str | None):
-    """Show upcoming calendar events."""
+def calendar(days: int, cal_name: str | None, as_json: bool, tz_str: str | None, output: str | None, account_name: str | None):
+    """Show calendar events (past or future).
+
+    Datetimes are automatically converted to your system's local timezone.
+    Use --timezone to override with a specific timezone.
+
+    Examples:
+      outlook calendar --days 7      # Next 7 days
+      outlook calendar --days -7     # Past 7 days
+      outlook calendar --days -30    # Past 30 days
+
+    Note: Date ranges are calculated in local timezone, not UTC.
+    This means --days -1 will show events from yesterday 00:00 to today 00:00 (local time).
+    """
+    tz = _resolve_output_tz(tz_str)
+
+    import datetime as dt
+    now_local = dt.datetime.now().astimezone()
+    today_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Calculate date range in local timezone
+    if days >= 0:
+        start = today_midnight
+        end = today_midnight + timedelta(days=days)
+        range_desc = f"next {days} days"
+    else:
+        start = today_midnight + timedelta(days=days)  # days is negative
+        end = today_midnight
+        range_desc = f"past {-days} days"
+
+    # Convert to UTC for API
+    start_utc = start.astimezone(timezone.utc)
+    end_utc = end.astimezone(timezone.utc)
+
     client = _get_client()
-    now = datetime.now(timezone.utc)
-    end = now + timedelta(days=days)
     events = client.get_calendar_view(
-        start=now.isoformat(),
-        end=end.isoformat(),
+        start=start_utc.isoformat(),
+        end=end_utc.isoformat(),
         calendar_name=cal_name,
     )
 
     if _wants_json(as_json):
         if output:
-            save_json(events, output)
+            save_json(events, output, tz=tz)
             print_success(f"Saved to {output}")
         else:
-            click.echo(to_json_envelope(events))
+            click.echo(to_json_envelope(events, tz=tz))
     else:
         if not events:
-            print_success(f"No events in the next {days} days.")
+            print_success(f"No events in the {range_desc}.")
         else:
-            console.print(f"[bold cyan]Calendar ({days} days)[/bold cyan]")
+            console.print(f"[bold cyan]Calendar ({range_desc})[/bold cyan]")
             print_events(events)
 
 
 @click.command()
 @click.argument("event_id")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@click.option("--timezone", "tz_str", default=None, help="Timezone for output (default: system local). Examples: UTC, UTC+8, Asia/Shanghai")
 @account_option
 @_handle_api_error
-def event(event_id: str, as_json: bool, account_name: str | None):
+def event(event_id: str, as_json: bool, tz_str: str | None, account_name: str | None):
     """View event details by display number."""
+    tz = _resolve_output_tz(tz_str)
     client = _get_client()
     ev = client.get_event(event_id)
     if _wants_json(as_json):
-        click.echo(to_json_envelope(ev))
+        click.echo(to_json_envelope(ev, tz=tz))
     else:
         print_event_detail(ev)
 
@@ -333,10 +416,12 @@ def event_delete(event_ids: tuple, series: bool, yes: bool, account_name: str | 
 @click.argument("event_id")
 @click.option("--days", default=90, type=int, help="Look-ahead days (default 90)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@click.option("--timezone", "tz_str", default=None, help="Timezone for output (default: system local). Examples: UTC, UTC+8, Asia/Shanghai")
 @account_option
 @_handle_api_error
-def event_instances(event_id: str, days: int, as_json: bool, account_name: str | None):
+def event_instances(event_id: str, days: int, as_json: bool, tz_str: str | None, account_name: str | None):
     """List occurrences of a recurring event."""
+    tz = _resolve_output_tz(tz_str)
     client = _get_client()
     now = datetime.now(timezone.utc)
     end = now + timedelta(days=days)
@@ -346,7 +431,7 @@ def event_instances(event_id: str, days: int, as_json: bool, account_name: str |
         end=end.isoformat(),
     )
     if _wants_json(as_json):
-        click.echo(to_json_envelope(events))
+        click.echo(to_json_envelope(events, tz=tz))
     else:
         if not events:
             print_success("No occurrences found.")
@@ -401,13 +486,15 @@ def calendars_cmd(as_json: bool, account_name: str | None):
 @click.option("--end-hour", default=18, type=int, help="End hour (default 18)")
 @click.option("--duration", "-d", default=60, type=int, help="Meeting duration in minutes (default 60)")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@click.option("--timezone", "tz_str", default=None, help="Timezone for output (default: system local). Examples: UTC, UTC+8, Asia/Shanghai")
 @account_option
 @_handle_api_error
-def free_busy(attendees: str, date: str, start_hour: int, end_hour: int, duration: int, as_json: bool, account_name: str | None):
+def free_busy(attendees: str, date: str, start_hour: int, end_hour: int, duration: int, as_json: bool, tz_str: str | None, account_name: str | None):
     """Find available meeting times.
 
     ATTENDEES: comma-separated emails. DATE: YYYY-MM-DD, today, or tomorrow.
     """
+    tz = _resolve_output_tz(tz_str)
     addr_list = [a.strip() for a in attendees.split(",")]
 
     if date.lower() == "today":
@@ -428,7 +515,7 @@ def free_busy(attendees: str, date: str, start_hour: int, end_hour: int, duratio
     )
 
     if _wants_json(as_json):
-        click.echo(to_json_envelope(suggestions))
+        click.echo(to_json_envelope(suggestions, tz=tz))
     else:
         if not suggestions:
             print_error("No available meeting slots found.")
