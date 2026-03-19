@@ -20,9 +20,11 @@ playwright install chromium
 ## Auth
 
 ```sh
-outlook login          # opens browser, captures token automatically
-outlook login --force  # force re-login, ignore saved session
-outlook whoami         # verify current user
+outlook login                              # opens browser, captures token automatically
+outlook login --force                      # force re-login, ignore saved session
+echo $TOKEN | outlook login --with-token   # skip browser, read token from stdin
+outlook login --with-token < token.txt     # read token from file
+outlook whoami                             # verify current user
 
 outlook account add work
 outlook account add personal
@@ -227,9 +229,13 @@ outlook pin 3 --unpin            # unpin
 ### Calendar
 
 ```sh
-outlook calendar                          # next 7 days
-outlook calendar --days 14                # next 14 days
-outlook calendar --calendar "John Smith"  # view a shared calendar
+outlook calendar                                      # next 7 days
+outlook calendar --days 14                            # next 14 days
+outlook calendar --days -7                            # past 7 days
+outlook calendar --days -30                           # past 30 days
+outlook calendar --timezone Asia/Shanghai             # convert times to timezone
+outlook calendar --timezone UTC+8                     # fixed offset also works
+outlook calendar --calendar "John Smith"              # view a shared calendar
 ```
 
 ### Events
@@ -355,7 +361,7 @@ Category management commands (`categories`, `category-create`, `category-delete`
 max_messages: 25
 default_folder: Inbox
 default_signature: null       # set to signature name for auto-append
-timezone: UTC                 # Microsoft timezone ID for calendar operations
+timezone: UTC                 # output timezone for calendar commands (UTC, UTC+8, Asia/Shanghai)
 browser:
   headless: false
   timeout: 120
